@@ -4,6 +4,7 @@ var { to } = require('await-to-js');
 var ContextKeeper = require('audio-context-singleton');
 var queue = require('d3-queue').queue;
 var curry = require('lodash.curry');
+var pluck = require('lodash.pluck');
 
 var sb = require('standard-bail')();
 
@@ -17,15 +18,14 @@ function VoiceActivityEmitter({
   minNoiseLevel = 0.6, // from 0 to 1
   maxNoiseLevel = 0.9, // from 0 to 1
   avgNoiseMultiplier = 1.2,
-  segmentCutTimeLimit = 1000,
-  minSegmentLength = 200
+  minSegmentLength = 200,
+  segmentGranularityMS = 100
 }) {
   var recorder;
   var contextKeeper = ContextKeeper();
   var listenersForEvents = {};
   var vad;
   var cuttingASegment = false;
-  var cutTimerId;
   var currentRecordingChunks = [];
 
   var lastStartTime;
@@ -82,7 +82,31 @@ function VoiceActivityEmitter({
   }
 
   function saveChunk(e) {
-    currentRecordingChunks.push(e.data);
+    // TODO: Find out if e.timecode can work here instead of manually recording time here.
+    currentRecordingChunks.push({ stamp: performance.now(), data: e.data });
+  }
+
+  function getChunksInRange({ startTime, stopTime }) {
+    if (currentRecordingChunks.length < 1) {
+      return [];
+    }
+
+    // We can filter out other chunks, but we always have to
+    // retain the first chunks, which contains header metadata.
+    return pluck(
+      [currentRecordingChunks[0]].concat(
+        currentRecordingChunks
+          .slice(1)
+          .filter(
+            curry(chunkIntersectsBounds)(
+              segmentGranularityMS,
+              startTime,
+              stopTime
+            )
+          )
+      ),
+      'data'
+    );
   }
 
   function startWatchingStream(audioCtx, stream) {
@@ -99,12 +123,11 @@ function VoiceActivityEmitter({
       onVoiceStart,
       onVoiceStop
     });
+    recorder.start(segmentGranularityMS);
   }
 
   function onVoiceStart() {
     lastStartTime = performance.now();
-    currentRecordingChunks.length = 0;
-    recorder.start();
     let startListeners = dictOfArrayUtils.getValuesForKey(
       listenersForEvents,
       'start'
@@ -129,37 +152,20 @@ function VoiceActivityEmitter({
 
     cuttingASegment = true;
 
-    cutTimerId = setTimeout(abandonCut, segmentCutTimeLimit);
+    var blob = new Blob(getChunksInRange({ startTime, stopTime }), {
+      type: 'audio/ogg; codecs=opus'
+    });
+    // Keep that first header chunk!
+    currentRecordingChunks.length = 1;
 
-    recorder.addEventListener('stop', sendDataToListener);
-    if (recorder.state === 'recording') {
-      recorder.stop();
+    if (stopTime - startTime >= minSegmentLength) {
+      let segmentListeners = dictOfArrayUtils.getValuesForKey(
+        listenersForEvents,
+        'segment'
+      );
+      segmentListeners.forEach(curry(sendSegment)(startTime, stopTime, blob));
     }
 
-    function sendDataToListener() {
-      if (!cuttingASegment) {
-        // If we timed out have and have moved on, let this one go.
-        return;
-      }
-      recorder.removeEventListener('stop', sendDataToListener);
-      var blob = new Blob(currentRecordingChunks, {
-        type: 'audio/ogg; codecs=opus'
-      });
-
-      if (stopTime - startTime >= minSegmentLength) {
-        let segmentListeners = dictOfArrayUtils.getValuesForKey(
-          listenersForEvents,
-          'segment'
-        );
-        segmentListeners.forEach(curry(sendSegment)(startTime, stopTime, blob));
-      }
-
-      clearTimeout(cutTimerId);
-      cuttingASegment = false;
-    }
-  }
-
-  function abandonCut() {
     cuttingASegment = false;
   }
 
@@ -182,6 +188,15 @@ function VoiceActivityEmitter({
 // see if this is a significant problem.
 function sendSegment(startTime, stopTime, blob, listener) {
   listener({ startTime, stopTime, blob });
+}
+
+function chunkIntersectsBounds(chunkLength, startTime, stopTime, chunk) {
+  var chunkEnd = chunk.stamp + chunkLength;
+  return (
+    (chunk.stamp >= startTime && chunk.stamp <= stopTime) ||
+    (chunkEnd >= startTime && chunkEnd <= stopTime) ||
+    (chunk.stamp <= startTime && chunkEnd >= stopTime)
+  );
 }
 
 module.exports = VoiceActivityEmitter;
