@@ -18,7 +18,7 @@ function VoiceActivityEmitter({
   maxNoiseLevel = 0.9, // from 0 to 1
   avgNoiseMultiplier = 1.2,
   segmentCutTimeLimit = 1000,
-  minSegmentLength = 300
+  minSegmentLength = 200
 }) {
   var recorder;
   var contextKeeper = ContextKeeper();
@@ -119,10 +119,6 @@ function VoiceActivityEmitter({
       return;
     }
 
-    if (stopTime - startTime < minSegmentLength) {
-      return;
-    }
-
     cuttingASegment = true;
 
     cutTimerId = setTimeout(abandonCut, segmentCutTimeLimit);
@@ -142,11 +138,13 @@ function VoiceActivityEmitter({
         type: 'audio/ogg; codecs=opus'
       });
 
-      var segmentListeners = dictOfArrayUtils.getValuesForKey(
-        listenersForEvents,
-        'segment'
-      );
-      segmentListeners.forEach(curry(sendSegment)(startTime, stopTime, blob));
+      if (stopTime - startTime >= minSegmentLength) {
+        let segmentListeners = dictOfArrayUtils.getValuesForKey(
+          listenersForEvents,
+          'segment'
+        );
+        segmentListeners.forEach(curry(sendSegment)(startTime, stopTime, blob));
+      }
 
       clearTimeout(cutTimerId);
       cuttingASegment = false;
