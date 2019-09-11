@@ -8,11 +8,13 @@ var capturedRoot = d3.select('#captured-root');
 
 document.getElementById('start-button').addEventListener('click', start);
 document.getElementById('stop-button').addEventListener('click', stopListening);
+var listeningMessage = document.getElementById('listening-message');
 
 var emitter = VoiceActivityEmitter({});
 
 emitter.on('error', handleError);
 emitter.on('segment', addSegmentToList);
+emitter.on('start', indicateListening);
 
 function start() {
   console.log('started');
@@ -24,7 +26,13 @@ function stopListening() {
   emitter.stopListening();
 }
 
+function indicateListening({ startTime }) {
+  listeningMessage.textContent = 'Speaking began at ' + startTime;
+  listeningMessage.classList.remove('hidden');
+}
+
 function addSegmentToList(segment) {
+  listeningMessage.classList.add('hidden');
   console.log('Got segment.', segment);
   segments.push(segment);
   renderSegments(segments);

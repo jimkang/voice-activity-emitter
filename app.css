@@ -28,6 +28,12 @@ body {
   padding: 1em;
 }
 
+#listening-message {
+  background-color: #ff4400;
+  margin: 1em;
+  padding: 1em;
+}
+
 button {
   text-transform: uppercase;
   color: #444;

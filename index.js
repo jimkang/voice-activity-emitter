@@ -103,9 +103,17 @@ function VoiceActivityEmitter({
 
   function onVoiceStart() {
     lastStartTime = performance.now();
-    console.log('Voice started.', lastStartTime);
     currentRecordingChunks.length = 0;
     recorder.start();
+    let startListeners = dictOfArrayUtils.getValuesForKey(
+      listenersForEvents,
+      'start'
+    );
+    startListeners.forEach(sendStart);
+  }
+
+  function sendStart(listener) {
+    listener({ startTime: lastStartTime });
   }
 
   function onVoiceStop() {
