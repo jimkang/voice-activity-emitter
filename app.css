@@ -1,0 +1,52 @@
+body {
+  font-size: 24pt;
+  font-family: futura, sans-serif;
+  background-color: #fff;
+  color: #666;
+  margin-bottom: 2em;
+  margin-left: 2em;
+  margin-right: 2em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hidden {
+  opacity: 0;
+  transition: opacity 1s;
+  display: none;
+}
+
+.visible {
+  opacity: 1;
+  transition: opacity 2s;
+}
+
+#status-message {
+  background-color: #ffffee;
+  margin: 1em;
+  padding: 1em;
+}
+
+button {
+  text-transform: uppercase;
+  color: #444;
+  font-size: 0.8em;
+  cursor: pointer;
+  background-color: white;
+  padding: 0.5em;
+  border-radius: 0.5em;
+  border-width: 1px;
+  border-color: #aaa;
+  border-style: solid;
+  font-family: futura;
+  min-width: 44px;
+  box-shadow: #444 0 0 4px;
+}
+
+@media all and (max-height: 568px) {
+  body {
+    font-size: 18px;
+  }
+}
+

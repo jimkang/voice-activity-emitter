@@ -1,0 +1,60 @@
+var VoiceActivityEmitter = require('./index');
+var handleError = require('handle-error-web');
+var d3 = require('d3-selection');
+var accessor = require('accessor');
+
+var segments = [];
+var capturedRoot = d3.select('#captured-root');
+
+document.getElementById('start-button').addEventListener('click', start);
+document.getElementById('stop-button').addEventListener('click', stopListening);
+
+var emitter = VoiceActivityEmitter({});
+
+emitter.on('error', handleError);
+emitter.on('segment', addSegmentToList);
+
+function start() {
+  console.log('started');
+  emitter.startListening();
+}
+
+function stopListening() {
+  console.log('stopListening');
+  emitter.stopListening();
+}
+
+function addSegmentToList(segment) {
+  console.log('Got segment.', segment);
+  segments.push(segment);
+  renderSegments(segments);
+}
+
+function renderSegments(segments) {
+  var segmentItems = capturedRoot
+    .selectAll('.segment')
+    .data(segments, getSegmentId);
+  segmentItems.exit().remove();
+  var newSegments = segmentItems
+    .enter()
+    .append('li')
+    .classed('segment', true);
+  newSegments.append('div').classed('start-time', true);
+  newSegments.append('div').classed('stop-time', true);
+  newSegments.append('audio').attr('controls', true);
+
+  var currentSegments = newSegments.merge(segmentItems);
+
+  currentSegments.select('.start-time').text(accessor('startTime'));
+  currentSegments.select('.stop-time').text(accessor('stopTime'));
+
+  currentSegments.select('audio').attr('src', getBlobURL);
+}
+
+function getSegmentId({ startTime, stopTime }) {
+  return `segment-${startTime}-${stopTime}`;
+}
+
+function getBlobURL({ blob }) {
+  return window.URL.createObjectURL(blob);
+}
