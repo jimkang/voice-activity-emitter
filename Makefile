@@ -28,5 +28,5 @@ sync:
 	scp $(HOMEDIR)/app.css $(USER)@$(SERVER):/$(APPDIR)/
 
 set-up-dir:
-	ssh $(USER)@$(SERVER) "mkdir -p $(APPDIR)/audio"
+	ssh $(USER)@$(SERVER) "mkdir -p $(APPDIR)"
 
