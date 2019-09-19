@@ -14,6 +14,7 @@ Usage
 -----
 
     var VoiceActivityEmitter = require('voice-activity-emitter');
+    var toWav = require('audiobuffer-to-wav');
 		var emitter = VoiceActivityEmitter({});
 
 		emitter.on('error', handleError);
@@ -29,7 +30,8 @@ Usage
 			emitter.stopListening();
 		}
 
-		function playSegment({ startTime, stopTime, blob }) {
+		function playSegment({ startTime, audioBuffer }) {
+      var blob = new Blob([toWav(audioBuffer)]);
 			var audio = new Audio(blob);
 			audio.play();
 		}

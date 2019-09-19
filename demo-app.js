@@ -2,9 +2,9 @@ var VoiceActivityEmitter = require('./index');
 var handleError = require('handle-error-web');
 var d3 = require('d3-selection');
 var accessor = require('accessor');
-
 var segments = [];
 var capturedRoot = d3.select('#captured-root');
+var toWav = require('audiobuffer-to-wav');
 
 document.getElementById('start-button').addEventListener('click', start);
 document.getElementById('stop-button').addEventListener('click', stopListening);
@@ -48,13 +48,11 @@ function renderSegments(segments) {
     .append('li')
     .classed('segment', true);
   newSegments.append('div').classed('start-time', true);
-  newSegments.append('div').classed('stop-time', true);
   newSegments.append('audio').attr('controls', true);
 
   var currentSegments = newSegments.merge(segmentItems);
 
   currentSegments.select('.start-time').text(accessor('startTime'));
-  currentSegments.select('.stop-time').text(accessor('stopTime'));
 
   currentSegments.select('audio').attr('src', getBlobURL);
 }
@@ -63,6 +61,7 @@ function getSegmentId({ startTime, stopTime }) {
   return `segment-${startTime}-${stopTime}`;
 }
 
-function getBlobURL({ blob }) {
+function getBlobURL({ audioBuffer }) {
+  var blob = new Blob([toWav(audioBuffer)]);
   return window.URL.createObjectURL(blob);
 }
